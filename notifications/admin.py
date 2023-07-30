@@ -1,11 +1,13 @@
 from email import message
 from django.contrib import admin
+from django.http import HttpResponseRedirect
 from django.http.request import HttpRequest
 from django.http.response import HttpResponse
 from django.urls import is_valid_path
-
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from .models import Notification
-
+from django.urls import path
 # admin.site.register(Notification)
 
 from django import forms
@@ -29,6 +31,16 @@ class NotificationAdmin(admin.ModelAdmin):
             if form.is_valid():
                 message = form.cleaned_data["message"]
                 notification = Notification.objects.create(message=message)
+                channel_layer = get_channel_layer()
+                async_to_sync(channel_layer.group_send)(
+                    "notifications",
+                    {
+                        "type":"send_notification",
+                        "message":message,
+                    }
+                )
+
+                return HttpResponseRedirect("../{}/".format(notification.pk))
         else:
             # If the request method is not POST, create a new form instance
             form = SendNotificationForm()
@@ -39,3 +51,11 @@ class NotificationAdmin(admin.ModelAdmin):
         context["form"] = form
         # Call the parent class's add_view method with the updated context
         return super().add_view(request, form_url, extra_context=context)
+        
+    def get_urls(self):
+            urls = super().get_urls()
+            custom_url = [
+                path("send-notification/", self.admin_site.admin_view(self.add_view),\
+                    name="send-notification"),
+            ]
+            return custom_url + urls

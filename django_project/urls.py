@@ -7,7 +7,7 @@ urlpatterns = [
     path("notification/",include("notifications.urls"))
 ]
 
-websocket_patterns = [
+websocket_urlpatterns = [
     # Endpoin of creating a web socket
     path("ws/notifications/", NotificationConsumer.as_asgi())
 ]
